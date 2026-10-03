@@ -14,6 +14,7 @@ import {
   AlertCircle 
 } from 'lucide-react';
 import { PortfolioItem, Category } from '../types/portfolio';
+import { compressImageFile } from '../utils/storage';
 
 // Presets for quick upload testing if user doesn't have local media on hand
 import reelFitnessCore from '../assets/images/reel_fitness_core_1791025447491.jpg';
@@ -63,23 +64,38 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+
   if (!isOpen) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 25 * 1024 * 1024) {
-      setError('File size exceeds 25MB limit.');
+    if (file.size > 50 * 1024 * 1024) {
+      setError('File size exceeds 50MB limit.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setMediaPreview(reader.result as string);
+    try {
+      setIsProcessingFile(true);
       setError('');
-    };
-    reader.readAsDataURL(file);
+      if (file.type.startsWith('image/')) {
+        const compressed = await compressImageFile(file, 1400, 1400, 0.84);
+        setMediaPreview(compressed);
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          setMediaPreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err) {
+      console.error('Error processing media upload:', err);
+      setError('Failed to process image file. Please try another image.');
+    } finally {
+      setIsProcessingFile(false);
+    }
   };
 
   const handleApplyPreset = (presetUrl: string, presetType: 'video' | 'image', cat: 'fitness' | 'travel' | 'food' | 'lifestyle') => {

@@ -17,6 +17,7 @@ import {
   Camera
 } from 'lucide-react';
 import { UserProfile } from '../types/portfolio';
+import { compressImageFile } from '../utils/storage';
 
 // Presets for background landscape images
 import heroLandscapeBackdrop from '../assets/images/hero_landscape_backdrop_1791027120745.jpg';
@@ -61,36 +62,50 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const bgInputRef = useRef<HTMLInputElement>(null);
   const qrInputRef = useRef<HTMLInputElement>(null);
 
+  const [isProcessingImg, setIsProcessingImg] = useState(false);
+
   if (!isOpen) return null;
 
-  const handleAvatarFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setAvatar(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    try {
+      setIsProcessingImg(true);
+      const compressed = await compressImageFile(file, 800, 800, 0.86);
+      setAvatar(compressed);
+    } catch (err) {
+      console.error('Failed to compress avatar:', err);
+    } finally {
+      setIsProcessingImg(false);
+    }
   };
 
-  const handleBackgroundFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBackgroundFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setBackgroundImage(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    try {
+      setIsProcessingImg(true);
+      const compressed = await compressImageFile(file, 1600, 1000, 0.82);
+      setBackgroundImage(compressed);
+    } catch (err) {
+      console.error('Failed to compress background landscape:', err);
+    } finally {
+      setIsProcessingImg(false);
+    }
   };
 
-  const handleQrFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleQrFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setInstagramQrImage(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    try {
+      setIsProcessingImg(true);
+      const compressed = await compressImageFile(file, 600, 600, 0.9);
+      setInstagramQrImage(compressed);
+    } catch (err) {
+      console.error('Failed to process QR image:', err);
+    } finally {
+      setIsProcessingImg(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -582,10 +597,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs sm:text-sm transition-all shadow-md shadow-emerald-500/20 active:scale-[0.98]"
+                disabled={isProcessingImg}
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-950 font-bold text-xs sm:text-sm transition-all shadow-md shadow-emerald-500/20 active:scale-[0.98]"
               >
                 <Save className="h-4 w-4" />
-                <span>Save All Changes</span>
+                <span>{isProcessingImg ? 'Optimizing Photo...' : 'Save All Changes'}</span>
               </button>
             </div>
           </div>

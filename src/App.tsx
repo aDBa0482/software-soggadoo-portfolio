@@ -22,6 +22,7 @@ import { Footer } from './components/Footer';
 import { INITIAL_PORTFOLIO_ITEMS, DEFAULT_USER_PROFILE } from './data/initialData';
 import { PortfolioItem, Comment, UserProfile } from './types/portfolio';
 import { CheckCircle2, Heart } from 'lucide-react';
+import { saveToIDB, loadFromIDB } from './utils/storage';
 
 const STORAGE_KEY_ITEMS = 'shaik_portfolio_items_v3';
 const STORAGE_KEY_FOLLOW = 'shaik_portfolio_is_following_v3';
@@ -106,6 +107,30 @@ export default function App() {
     }, 3500);
   };
 
+  // Hydrate custom profile & items from IndexedDB on initial load
+  useEffect(() => {
+    let isMounted = true;
+    async function hydrateFromIDB() {
+      try {
+        const idbProfile = await loadFromIDB<UserProfile>(STORAGE_KEY_PROFILE);
+        if (idbProfile && isMounted) {
+          setProfile(prev => ({ ...prev, ...idbProfile }));
+        }
+
+        const idbItems = await loadFromIDB<PortfolioItem[]>(STORAGE_KEY_ITEMS);
+        if (idbItems && Array.isArray(idbItems) && idbItems.length > 0 && isMounted) {
+          setItems(idbItems);
+        }
+      } catch (err) {
+        console.warn('Failed loading from IndexedDB:', err);
+      }
+    }
+    hydrateFromIDB();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Sync owner password to localStorage
   useEffect(() => {
     try {
@@ -115,12 +140,16 @@ export default function App() {
     }
   }, [ownerPassword]);
 
-  // Sync profile to localStorage
+  // Sync profile to IndexedDB (unlimited) & localStorage (quick cache)
   useEffect(() => {
+    // 1. IndexedDB handles large compressed images reliably
+    saveToIDB(STORAGE_KEY_PROFILE, profile);
+
+    // 2. LocalStorage as fast synchronous cache
     try {
       localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profile));
     } catch (e) {
-      console.error('Error syncing profile to storage:', e);
+      console.warn('LocalStorage quota limit reached, persisted safely in IndexedDB:', e);
     }
   }, [profile]);
 
@@ -133,12 +162,14 @@ export default function App() {
     }
   }, [isOwner]);
 
-  // Sync items to localStorage
+  // Sync items to IndexedDB & localStorage
   useEffect(() => {
+    saveToIDB(STORAGE_KEY_ITEMS, items);
+
     try {
       localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(items));
     } catch (e) {
-      console.error('Error syncing items to storage:', e);
+      console.warn('LocalStorage quota limit reached for items, saved in IndexedDB:', e);
     }
   }, [items]);
 
