@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Creator profile: visible to all visitors worldwide
+    match /profiles/{profileId} {
+      allow read: if true;
+      allow write: if profileId == 'creator';
+    }
+
+    // Portfolio items & reels: visible to all visitors worldwide
+    match /items/{itemId} {
+      allow read: if true;
+      allow write: if itemId.size() <= 128;
+    }
+  }
+}

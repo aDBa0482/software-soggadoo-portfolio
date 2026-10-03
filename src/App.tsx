@@ -23,6 +23,12 @@ import { INITIAL_PORTFOLIO_ITEMS, DEFAULT_USER_PROFILE } from './data/initialDat
 import { PortfolioItem, Comment, UserProfile } from './types/portfolio';
 import { CheckCircle2, Heart } from 'lucide-react';
 import { saveToIDB, loadFromIDB } from './utils/storage';
+import { 
+  saveCloudProfile, 
+  saveCloudItem, 
+  subscribeToCloudProfile, 
+  subscribeToCloudItems 
+} from './firebase';
 
 const STORAGE_KEY_ITEMS = 'shaik_portfolio_items_v3';
 const STORAGE_KEY_FOLLOW = 'shaik_portfolio_is_following_v3';
@@ -107,7 +113,7 @@ export default function App() {
     }, 3500);
   };
 
-  // Hydrate custom profile & items from IndexedDB on initial load
+  // Hydrate custom profile & items from IndexedDB and Firebase Cloud on initial load
   useEffect(() => {
     let isMounted = true;
     async function hydrateFromIDB() {
@@ -126,8 +132,29 @@ export default function App() {
       }
     }
     hydrateFromIDB();
+
+    // Subscribe to real-time Cloud updates from Firebase Firestore so all visitors globally see updates
+    const unsubProfile = subscribeToCloudProfile((cloudProfile) => {
+      if (cloudProfile && cloudProfile.name && isMounted) {
+        setProfile(prev => ({ ...prev, ...cloudProfile }));
+      }
+    });
+
+    const unsubItems = subscribeToCloudItems((cloudItems) => {
+      if (cloudItems && cloudItems.length > 0 && isMounted) {
+        setItems(prev => {
+          const map = new Map<string, PortfolioItem>();
+          prev.forEach(item => map.set(item.id, item));
+          cloudItems.forEach(item => map.set(item.id, item));
+          return Array.from(map.values());
+        });
+      }
+    });
+
     return () => {
       isMounted = false;
+      unsubProfile();
+      unsubItems();
     };
   }, []);
 
@@ -214,14 +241,26 @@ export default function App() {
     setUploadModalOpen(true);
   };
 
-  const handleUploadItem = (newItem: PortfolioItem) => {
+  const handleUploadItem = async (newItem: PortfolioItem) => {
     setItems(prev => [newItem, ...prev]);
-    showToast(`Published "${newItem.title}" to your ${newItem.category} portfolio!`);
+    showToast(`Saving "${newItem.title}" to Cloud Database...`);
+    const saved = await saveCloudItem(newItem);
+    if (saved) {
+      showToast(`Published "${newItem.title}" to Cloud! Now visible to all viewers worldwide.`);
+    } else {
+      showToast(`Published "${newItem.title}"!`);
+    }
   };
 
-  const handleSaveProfile = (updatedProfile: UserProfile) => {
+  const handleSaveProfile = async (updatedProfile: UserProfile) => {
     setProfile(updatedProfile);
-    showToast("Profile & background landscape updated successfully!");
+    showToast("Syncing profile & photos to Cloud Database...");
+    const saved = await saveCloudProfile(updatedProfile);
+    if (saved) {
+      showToast("Profile & photos synced to Cloud! Visible to all viewers worldwide.");
+    } else {
+      showToast("Profile saved locally.");
+    }
   };
 
   const handleToggleLike = (itemId: string) => {

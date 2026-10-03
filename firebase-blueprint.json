@@ -1,0 +1,63 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Creator public profile details for Shaik Ahammad",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "handle": { "type": "string", "maxLength": 100 },
+        "dateOfBirth": { "type": "string", "maxLength": 50 },
+        "education": { "type": "string", "maxLength": 200 },
+        "tagline": { "type": "string", "maxLength": 250 },
+        "bio": { "type": "string", "maxLength": 2000 },
+        "avatar": { "type": "string", "maxLength": 300000 },
+        "heroImage": { "type": "string", "maxLength": 300000 },
+        "backgroundImage": { "type": "string", "maxLength": 500000 },
+        "location": { "type": "string", "maxLength": 100 },
+        "instagramId": { "type": "string", "maxLength": 100 },
+        "instagramUrl": { "type": "string", "maxLength": 300 },
+        "instagramQrImage": { "type": "string", "maxLength": 300000 },
+        "facebookName": { "type": "string", "maxLength": 100 },
+        "facebookUrl": { "type": "string", "maxLength": 300 },
+        "youtubeName": { "type": "string", "maxLength": 100 },
+        "youtubeUrl": { "type": "string", "maxLength": 300 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["name", "handle"]
+    },
+    "PortfolioItem": {
+      "title": "PortfolioItem",
+      "description": "Showcased fitness reel, travel story, or food post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "enum": ["fitness", "travel", "food", "lifestyle"] },
+        "mediaType": { "type": "string", "enum": ["video", "image"] },
+        "mediaUrl": { "type": "string", "maxLength": 500000 },
+        "aspectRatio": { "type": "string", "maxLength": 20 },
+        "caption": { "type": "string", "maxLength": 3000 },
+        "location": { "type": "string", "maxLength": 150 },
+        "duration": { "type": "string", "maxLength": 50 },
+        "views": { "type": "string", "maxLength": 50 },
+        "likes": { "type": "number" },
+        "isFeatured": { "type": "boolean" },
+        "socialSource": { "type": "string", "maxLength": 50 },
+        "publishedAt": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "title", "category", "mediaType", "mediaUrl"]
+    }
+  },
+  "firestore": {
+    "/profiles/creator": {
+      "schema": "UserProfile",
+      "description": "Shared creator profile synchronized across all global viewers"
+    },
+    "/items/{itemId}": {
+      "schema": "PortfolioItem",
+      "description": "Shared portfolio posts and reels visible to all viewers"
+    }
+  }
+}
