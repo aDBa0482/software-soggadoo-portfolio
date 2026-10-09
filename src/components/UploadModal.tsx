@@ -11,7 +11,9 @@ import {
   Check, 
   Plus, 
   Trash2,
-  AlertCircle 
+  AlertCircle,
+  Instagram,
+  Link2
 } from 'lucide-react';
 import { PortfolioItem, Category } from '../types/portfolio';
 import { compressImageFile } from '../utils/storage';
@@ -35,6 +37,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   defaultCategory = 'fitness'
 }) => {
   const [category, setCategory] = useState<'fitness' | 'travel' | 'food' | 'lifestyle'>(defaultCategory);
+  const [sourceType, setSourceType] = useState<'file' | 'instagram'>('file');
+  const [instagramUrl, setInstagramUrl] = useState('');
   const [mediaType, setMediaType] = useState<'video' | 'image'>('video');
   const [title, setTitle] = useState('');
   const [caption, setCaption] = useState('');
@@ -111,8 +115,12 @@ export const UploadModal: React.FC<UploadModalProps> = ({
       setError('Please provide a title for your post.');
       return;
     }
-    if (!mediaPreview) {
-      setError('Please upload an image/video file or select a sample preset.');
+    const finalMediaUrl = sourceType === 'instagram' ? instagramUrl.trim() : mediaPreview;
+
+    if (!finalMediaUrl) {
+      setError(sourceType === 'instagram' 
+        ? 'Please enter your Instagram Reel or Post link (e.g. https://www.instagram.com/reel/...).' 
+        : 'Please upload an image/video file or select a sample preset.');
       return;
     }
 
@@ -120,18 +128,19 @@ export const UploadModal: React.FC<UploadModalProps> = ({
       id: `custom-${Date.now()}`,
       title: title.trim(),
       category,
-      mediaType,
-      mediaUrl: mediaPreview,
+      mediaType: sourceType === 'instagram' ? 'video' : mediaType,
+      mediaUrl: finalMediaUrl,
+      aspectRatio: sourceType === 'instagram' ? '9:16' : mediaType === 'video' ? '9:16' : '4:3',
       caption: caption.trim() || 'No caption provided.',
       location: location.trim() || undefined,
-      duration: mediaType === 'video' ? duration : undefined,
-      views: '1.2K',
+      duration: (sourceType === 'instagram' || mediaType === 'video') ? duration : undefined,
+      views: '1.8K',
       likes: 1,
       isLiked: true,
       comments: [],
       isFeatured,
       publishedAt: 'Just now',
-      socialSource: 'portfolio',
+      socialSource: sourceType === 'instagram' ? 'instagram' : 'portfolio',
     };
 
     if (category === 'fitness') {
@@ -247,104 +256,137 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                Media Format
+                Upload Source
               </label>
               <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-900 border border-zinc-800 rounded-xl">
                 <button
                   type="button"
-                  onClick={() => setMediaType('video')}
+                  onClick={() => setSourceType('file')}
                   className={`flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                    mediaType === 'video' ? 'bg-zinc-800 text-amber-400 font-bold' : 'text-zinc-400 hover:text-white'
+                    sourceType === 'file' ? 'bg-zinc-800 text-amber-400 font-bold' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
-                  <Video className="h-3.5 w-3.5" />
-                  <span>Video Reel</span>
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>Device Upload</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setMediaType('image')}
+                  onClick={() => {
+                    setSourceType('instagram');
+                    setMediaType('video');
+                  }}
                   className={`flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                    mediaType === 'image' ? 'bg-zinc-800 text-amber-400 font-bold' : 'text-zinc-400 hover:text-white'
+                    sourceType === 'instagram' ? 'bg-gradient-to-r from-pink-600 to-amber-600 text-white font-bold' : 'text-pink-400 hover:text-pink-300'
                   }`}
                 >
-                  <ImageIcon className="h-3.5 w-3.5" />
-                  <span>Photo</span>
+                  <Instagram className="h-3.5 w-3.5" />
+                  <span>Instagram Reel Link</span>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Media Upload Area */}
-          <div>
-            <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-              Select or Drop File
-            </label>
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-zinc-800 hover:border-amber-500/50 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-zinc-900/40 group"
-            >
+          {/* Media Input Area */}
+          {sourceType === 'instagram' ? (
+            <div className="p-4 rounded-xl bg-zinc-900/80 border border-pink-500/30 space-y-3">
+              <div className="flex items-center gap-2 text-pink-400 text-xs font-semibold">
+                <Instagram className="h-4 w-4" />
+                <span>Paste Your Instagram Reel or Story Link</span>
+              </div>
               <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,video/*"
-                onChange={handleFileChange}
-                className="hidden"
+                type="url"
+                value={instagramUrl}
+                onChange={(e) => {
+                  setInstagramUrl(e.target.value);
+                  setError('');
+                }}
+                placeholder="https://www.instagram.com/reel/C... or https://www.instagram.com/p/..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-black border border-zinc-700 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-pink-500"
               />
-
-              {mediaPreview ? (
-                <div className="relative inline-block max-h-48 rounded-xl overflow-hidden border border-zinc-700">
-                  <img
-                    src={mediaPreview}
-                    alt="Preview"
-                    className="max-h-48 object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="px-3 py-1 bg-black/80 text-white text-xs rounded-lg">
-                      Click to change file
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-800 text-zinc-400 group-hover:text-amber-400 group-hover:bg-zinc-700 transition-colors">
-                    <Upload className="h-6 w-6" />
-                  </div>
-                  <p className="text-sm font-medium text-white">
-                    Click to browse your device
-                  </p>
-                  <p className="text-xs text-zinc-500">
-                    Supports high-res PNG, JPG, MP4, WebM (up to 25MB)
-                  </p>
-                </div>
-              )}
+              <p className="text-[11px] text-zinc-400">
+                Directly connects your reel from <strong className="text-white font-mono">@software_soggadoo</strong>. Viewers will be able to watch it embedded on your portfolio or open it in Instagram!
+              </p>
             </div>
+          ) : (
+            <div>
+              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+                Select or Drop File
+              </label>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-zinc-800 hover:border-amber-500/50 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-zinc-900/40 group"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
 
-            {/* Quick Demo Presets */}
-            <div className="mt-3 flex items-center gap-2">
-              <span className="text-[11px] text-zinc-500 font-medium">Or quick sample:</span>
-              <button
-                type="button"
-                onClick={() => handleApplyPreset(reelFitnessCore, 'video', 'fitness')}
-                className="text-[11px] text-amber-400 hover:underline px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800"
-              >
-                Sample Fitness Reel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleApplyPreset(contentTravelWanderlust, 'image', 'travel')}
-                className="text-[11px] text-blue-400 hover:underline px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800"
-              >
-                Sample Travel Photo
-              </button>
-              <button
-                type="button"
-                onClick={() => handleApplyPreset(foodArtisanPasta, 'image', 'food')}
-                className="text-[11px] text-emerald-400 hover:underline px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800"
-              >
-                Sample Food Dish
-              </button>
+                {mediaPreview ? (
+                  <div className="relative inline-block max-h-48 rounded-xl overflow-hidden border border-zinc-700">
+                    {mediaPreview.startsWith('data:video') ? (
+                      <video
+                        src={mediaPreview}
+                        controls
+                        className="max-h-48 rounded-xl object-contain"
+                      />
+                    ) : (
+                      <img
+                        src={mediaPreview}
+                        alt="Preview"
+                        className="max-h-48 object-cover"
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      <span className="px-3 py-1 bg-black/80 text-white text-xs rounded-lg">
+                        Click to change file
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-800 text-zinc-400 group-hover:text-amber-400 group-hover:bg-zinc-700 transition-colors">
+                      <Upload className="h-6 w-6" />
+                    </div>
+                    <p className="text-sm font-medium text-white">
+                      Click to browse your device
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      Supports high-res PNG, JPG, MP4, WebM (up to 50MB)
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Demo Presets */}
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-[11px] text-zinc-500 font-medium">Or quick sample:</span>
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset(reelFitnessCore, 'video', 'fitness')}
+                  className="text-[11px] text-amber-400 hover:underline px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800"
+                >
+                  Sample Fitness Reel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset(contentTravelWanderlust, 'image', 'travel')}
+                  className="text-[11px] text-blue-400 hover:underline px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800"
+                >
+                  Sample Travel Photo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset(foodArtisanPasta, 'image', 'food')}
+                  className="text-[11px] text-emerald-400 hover:underline px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800"
+                >
+                  Sample Food Dish
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Title & Caption */}
           <div className="space-y-4">

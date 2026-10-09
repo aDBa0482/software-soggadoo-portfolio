@@ -10,9 +10,13 @@ import {
   PlusCircle, 
   Utensils, 
   Compass, 
-  Dumbbell 
+  Dumbbell,
+  Instagram,
+  Video
 } from 'lucide-react';
 import { PortfolioItem, Category } from '../types/portfolio';
+
+type HighlightFilter = Category | 'reels';
 
 interface FeaturedHighlightsProps {
   items: PortfolioItem[];
@@ -27,12 +31,14 @@ export const FeaturedHighlights: React.FC<FeaturedHighlightsProps> = ({
   onSelectItem,
   onOpenUpload,
 }) => {
-  const [activeFilter, setActiveFilter] = useState<Category>('all');
+  const [activeFilter, setActiveFilter] = useState<HighlightFilter>('all');
 
   // Filter items that are marked as featured (or if user uploaded and marked)
   const featuredPool = items.filter(i => i.isFeatured || i.views);
   const filteredItems = activeFilter === 'all' 
     ? featuredPool 
+    : activeFilter === 'reels'
+    ? featuredPool.filter(i => i.mediaType === 'video' || i.socialSource === 'instagram' || i.aspectRatio === '9:16')
     : featuredPool.filter(i => i.category === activeFilter);
 
   return (
@@ -56,7 +62,7 @@ export const FeaturedHighlights: React.FC<FeaturedHighlightsProps> = ({
 
           {/* Interactive Filter Segmented Control & Upload Action */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 p-1 bg-zinc-900 border border-zinc-800 rounded-xl">
+            <div className="flex items-center gap-1 p-1 bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
               <button
                 onClick={() => setActiveFilter('all')}
                 className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
@@ -66,6 +72,17 @@ export const FeaturedHighlights: React.FC<FeaturedHighlightsProps> = ({
                 }`}
               >
                 All Highlights
+              </button>
+              <button
+                onClick={() => setActiveFilter('reels')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
+                  activeFilter === 'reels'
+                    ? 'bg-gradient-to-r from-pink-600 to-amber-600 text-white font-bold shadow-sm'
+                    : 'text-pink-400 hover:text-pink-300'
+                }`}
+              >
+                <Instagram className="h-3 w-3" />
+                <span>Instagram Reels & Videos</span>
               </button>
               <button
                 onClick={() => setActiveFilter('fitness')}
@@ -146,12 +163,17 @@ export const FeaturedHighlights: React.FC<FeaturedHighlightsProps> = ({
                       <span className="capitalize">{item.category}</span>
                     </span>
 
-                    {item.mediaType === 'video' && (
+                    {item.socialSource === 'instagram' ? (
+                      <span className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-pink-600/90 text-white font-bold backdrop-blur-md">
+                        <Instagram className="h-3 w-3" />
+                        <span>Instagram Reel</span>
+                      </span>
+                    ) : item.mediaType === 'video' ? (
                       <span className="flex items-center gap-1 px-2 py-1 text-xs font-mono font-medium rounded-md bg-amber-500 text-zinc-950 font-bold">
                         <Play className="h-3 w-3 fill-current" />
                         <span>{item.duration || 'Video'}</span>
                       </span>
-                    )}
+                    ) : null}
                   </div>
 
                   {/* Top Right: Location or Source */}

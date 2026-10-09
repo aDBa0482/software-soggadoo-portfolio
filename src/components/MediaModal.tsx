@@ -15,10 +15,27 @@ import {
   Compass, 
   CheckCircle2, 
   Send,
-  Bookmark
+  Bookmark,
+  Instagram,
+  ExternalLink
 } from 'lucide-react';
 import { PortfolioItem, Comment } from '../types/portfolio';
 import { CREATOR_PROFILE } from '../data/initialData';
+
+function extractInstagramReelId(url?: string): string | null {
+  if (!url) return null;
+  const match = url.match(/instagram\.com\/(?:reel|p|tv)\/([A-Za-z0-9_-]+)/);
+  return match ? match[1] : null;
+}
+
+function isHtml5Video(url?: string): boolean {
+  if (!url) return false;
+  return (
+    url.startsWith('data:video/') ||
+    url.startsWith('blob:') ||
+    /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url)
+  );
+}
 
 interface MediaModalProps {
   item: PortfolioItem | null;
@@ -104,68 +121,111 @@ export const MediaModal: React.FC<MediaModalProps> = ({
         </button>
 
         {/* Left Column: Media Player / Lightbox Display */}
-        <div className="relative lg:w-3/5 bg-black flex items-center justify-center min-h-[300px] sm:min-h-[420px] lg:min-h-[600px] overflow-hidden group">
-          <img
-            src={item.mediaUrl}
-            alt={item.title}
-            className="w-full h-full object-contain max-h-[650px]"
-            referrerPolicy="no-referrer"
-          />
+        <div className="relative lg:w-3/5 bg-black flex items-center justify-center min-h-[320px] sm:min-h-[440px] lg:min-h-[600px] overflow-hidden group">
+          {(() => {
+            const reelId = extractInstagramReelId(item.mediaUrl);
+            const isVideo = isHtml5Video(item.mediaUrl);
 
-          {/* Video Player Controls Overlay */}
-          {item.mediaType === 'video' && (
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 flex flex-col justify-between p-4">
-              
-              {/* Top Video Header */}
-              <div className="flex items-center justify-between">
-                <span className="px-2.5 py-1 rounded bg-black/70 text-xs font-mono text-amber-400 font-bold border border-amber-500/20">
-                  REEL · {item.duration || '20:15'}
-                </span>
-                <button
-                  onClick={() => setIsMuted(!isMuted)}
-                  className="p-2 rounded-full bg-black/60 hover:bg-black/90 text-white transition-colors"
-                >
-                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                </button>
-              </div>
-
-              {/* Central Play/Pause Trigger */}
-              <div className="flex items-center justify-center">
-                <button
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-zinc-950 shadow-2xl hover:scale-110 active:scale-95 transition-all"
-                >
-                  {isPlaying ? (
-                    <Pause className="h-7 w-7 fill-current" />
-                  ) : (
-                    <Play className="h-7 w-7 fill-current ml-1" />
-                  )}
-                </button>
-              </div>
-
-              {/* Bottom Video Scrubber */}
-              <div className="space-y-1.5">
-                <div 
-                  className="h-1.5 w-full bg-zinc-700/80 rounded-full overflow-hidden cursor-pointer"
-                  onClick={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const clickX = e.clientX - rect.left;
-                    setProgress((clickX / rect.width) * 100);
-                  }}
-                >
-                  <div 
-                    className="h-full bg-amber-500 transition-all duration-200"
-                    style={{ width: `${progress}%` }}
+            // 1. Instagram Reel Embed
+            if (reelId) {
+              return (
+                <div className="w-full h-full min-h-[480px] flex flex-col items-center justify-center p-4 bg-zinc-950">
+                  <iframe
+                    src={`https://www.instagram.com/reel/${reelId}/embed/`}
+                    className="w-full max-w-[380px] h-[520px] rounded-xl border border-zinc-800 shadow-2xl"
+                    allowFullScreen
+                    scrolling="no"
                   />
+                  <a
+                    href={item.mediaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 text-xs text-pink-400 hover:text-pink-300 font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    <Instagram className="h-4 w-4" />
+                    <span>Watch original Reel on Instagram</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 </div>
-                <div className="flex items-center justify-between text-[11px] font-mono text-zinc-300">
-                  <span>{Math.floor((progress / 100) * 20)}:{Math.floor(((progress / 100) * 1200) % 60).toString().padStart(2, '0')}</span>
-                  <span>{item.duration || '20:15'}</span>
-                </div>
-              </div>
+              );
+            }
 
-            </div>
-          )}
+            // 2. Playable HTML5 Video File (MP4, WebM, MOV)
+            if (isVideo) {
+              return (
+                <div className="relative w-full h-full flex items-center justify-center bg-black">
+                  <video
+                    src={item.mediaUrl}
+                    controls
+                    autoPlay
+                    loop
+                    playsInline
+                    className="w-full h-full max-h-[650px] object-contain"
+                  />
+                  {item.socialSource === 'instagram' && (
+                    <a
+                      href={`https://www.instagram.com/${CREATOR_PROFILE.instagramId}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute top-4 left-4 z-10 px-2.5 py-1 rounded-full bg-black/70 hover:bg-black text-pink-400 text-xs font-semibold flex items-center gap-1.5 border border-pink-500/30 transition-colors backdrop-blur-sm"
+                    >
+                      <Instagram className="h-3.5 w-3.5" />
+                      <span>@{CREATOR_PROFILE.instagramId}</span>
+                    </a>
+                  )}
+                </div>
+              );
+            }
+
+            // 3. Image / Reel Poster View
+            return (
+              <div className="relative w-full h-full flex items-center justify-center">
+                <img
+                  src={item.mediaUrl}
+                  alt={item.title}
+                  className="w-full h-full object-contain max-h-[650px]"
+                  referrerPolicy="no-referrer"
+                />
+
+                {/* If it's tagged as video/reel, show an interactive video overlay */}
+                {item.mediaType === 'video' && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 flex flex-col justify-between p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 rounded bg-black/70 text-xs font-mono text-amber-400 font-bold border border-amber-500/20">
+                        REEL · {item.duration || '0:45'}
+                      </span>
+                      <a
+                        href={`https://www.instagram.com/${CREATOR_PROFILE.instagramId}/`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 rounded bg-black/70 hover:bg-black text-pink-400 text-xs font-semibold flex items-center gap-1 border border-pink-500/30 transition-colors"
+                      >
+                        <Instagram className="h-3.5 w-3.5" />
+                        <span>Instagram Reel</span>
+                      </a>
+                    </div>
+
+                    <div className="flex items-center justify-center">
+                      <a
+                        href={`https://www.instagram.com/${CREATOR_PROFILE.instagramId}/`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-pink-600 to-amber-600 text-white font-bold text-sm shadow-2xl hover:scale-105 active:scale-95 transition-all"
+                      >
+                        <Play className="h-5 w-5 fill-current" />
+                        <span>Watch on Instagram</span>
+                      </a>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] font-mono text-zinc-300">
+                      <span>{item.title}</span>
+                      <span>{item.views || '120K'} views</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Right Column: Creator Info, Details, Workout/Recipe Breakdown, Comments */}
