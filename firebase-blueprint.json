@@ -48,6 +48,16 @@
         "createdAt": { "type": "string", "maxLength": 50 }
       },
       "required": ["id", "title", "category", "mediaType", "mediaUrl"]
+    },
+    "SecurityAuth": {
+      "title": "SecurityAuth",
+      "description": "Hashed password and authentication security config",
+      "type": "object",
+      "properties": {
+        "passwordHash": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["passwordHash"]
     }
   },
   "firestore": {
@@ -58,6 +68,10 @@
     "/items/{itemId}": {
       "schema": "PortfolioItem",
       "description": "Shared portfolio posts and reels visible to all viewers"
+    },
+    "/security/auth": {
+      "schema": "SecurityAuth",
+      "description": "Synchronized hashed owner authentication state"
     }
   }
 }

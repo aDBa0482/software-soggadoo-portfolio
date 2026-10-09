@@ -123,3 +123,67 @@ export function subscribeToCloudItems(onUpdate: (items: PortfolioItem[]) => void
     console.warn('Items real-time subscription error:', err);
   });
 }
+
+/**
+ * Compute SHA-256 hash of a string
+ */
+export async function hashPassword(plainText: string): Promise<string> {
+  if (!plainText) return '';
+  const encoder = new TextEncoder();
+  const data = encoder.encode(plainText);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Fetch hashed password from Cloud Firestore
+ */
+export async function getCloudPasswordHash(): Promise<string | null> {
+  try {
+    const docRef = doc(db, 'security', 'auth');
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      return (data?.passwordHash as string) || null;
+    }
+  } catch (err) {
+    console.warn('Could not fetch cloud password hash:', err);
+  }
+  return null;
+}
+
+/**
+ * Save hashed password to Cloud Firestore
+ */
+export async function saveCloudPasswordHash(passwordHash: string): Promise<boolean> {
+  try {
+    const docRef = doc(db, 'security', 'auth');
+    await setDoc(docRef, {
+      passwordHash,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+    return true;
+  } catch (err) {
+    console.error('Failed to save password hash to Firebase:', err);
+    return false;
+  }
+}
+
+/**
+ * Real-time subscription to cloud password hash
+ */
+export function subscribeToCloudPasswordHash(onUpdate: (hash: string) => void) {
+  const docRef = doc(db, 'security', 'auth');
+  return onSnapshot(docRef, (snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data?.passwordHash) {
+        onUpdate(data.passwordHash);
+      }
+    }
+  }, (err) => {
+    console.warn('Security real-time subscription error:', err);
+  });
+}
+

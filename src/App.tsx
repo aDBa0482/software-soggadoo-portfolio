@@ -27,22 +27,30 @@ import {
   saveCloudProfile, 
   saveCloudItem, 
   subscribeToCloudProfile, 
-  subscribeToCloudItems 
+  subscribeToCloudItems,
+  saveCloudPasswordHash,
+  hashPassword,
+  subscribeToCloudPasswordHash
 } from './firebase';
+import { DEFAULT_OWNER_PASSWORD } from './components/OwnerLoginModal';
 
 const STORAGE_KEY_ITEMS = 'shaik_portfolio_items_v3';
 const STORAGE_KEY_FOLLOW = 'shaik_portfolio_is_following_v3';
 const STORAGE_KEY_PROFILE = 'shaik_portfolio_user_profile_v3';
 const STORAGE_KEY_OWNER = 'shaik_portfolio_is_owner_v3';
-const STORAGE_KEY_PASSWORD = 'shaik_portfolio_owner_password_v3';
+const STORAGE_KEY_PASSWORD = 'shaik_portfolio_owner_password_v4';
 
 export default function App() {
-  // Owner Password State (Default is Shaik@1997, can be reset via OTP to 6301010537 & adba0482@gmail.com)
+  // Owner Password State (Default is ad143ba@MS, can be reset via OTP to 6301010537 & adba0482@gmail.com)
   const [ownerPassword, setOwnerPassword] = useState<string>(() => {
     try {
-      return localStorage.getItem(STORAGE_KEY_PASSWORD) || 'Shaik@1997';
+      const saved = localStorage.getItem(STORAGE_KEY_PASSWORD);
+      if (saved && saved !== 'Shaik@1997') {
+        return saved;
+      }
+      return DEFAULT_OWNER_PASSWORD;
     } catch {
-      return 'Shaik@1997';
+      return DEFAULT_OWNER_PASSWORD;
     }
   });
 
@@ -403,9 +411,21 @@ export default function App() {
         onClose={() => setLoginModalOpen(false)}
         onUnlock={handleUnlockOwner}
         storedPassword={ownerPassword}
-        onUpdatePassword={(newPass) => {
+        onUpdatePassword={async (newPass) => {
           setOwnerPassword(newPass);
-          showToast("Password updated and saved successfully!");
+          try {
+            localStorage.setItem(STORAGE_KEY_PASSWORD, newPass);
+          } catch (e) {
+            console.error('Failed to store password locally:', e);
+          }
+          try {
+            const hash = await hashPassword(newPass);
+            await saveCloudPasswordHash(hash);
+            showToast("Password updated & saved to Cloud Database!");
+          } catch (e) {
+            console.error('Failed to save password hash to cloud:', e);
+            showToast("Password updated successfully!");
+          }
         }}
       />
 
